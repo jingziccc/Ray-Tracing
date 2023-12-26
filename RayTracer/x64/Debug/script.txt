@@ -1,0 +1,8 @@
+RayTracer.exe | set-content image.ppm -encoding String
+
+看到5.Adding a Sphere的上面
+
+要做的内容：
+使用Russian Rollete进行改进
+球面采样虽然概率平均，但采样速度可能非常慢（存在无效采样）
+结合the next week的代码，在in one week中加入aabb和bvh加速
