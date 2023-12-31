@@ -1,25 +1,19 @@
-#pragma once
 #ifndef MATERIAL_H
 #define MATERIAL_H
-//==============================================================================================
-// Originally written in 2016 by Peter Shirley <ptrshrl@gmail.com>
-//
-// To the extent possible under law, the author(s) have dedicated all copyright and related and
-// neighboring rights to this software to the public domain worldwide. This software is
-// distributed without any warranty.
-//
-// You should have received a copy (see file COPYING.txt) of the CC0 Public Domain Dedication
-// along with this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
-//==============================================================================================
+
 
 #include "util.h"
-
-#include "hittable_list.h"
+#include "hittable.h"
+#include "texture.h"
 
 
 class material {
 public:
     virtual ~material() = default;
+
+    virtual color emitted(double u, double v, const point3& p) const {
+        return color(0, 0, 0);
+    }
 
     virtual bool scatter(
         const ray& r_in, const hit_payload& rec, color& attenuation, ray& scattered
@@ -29,7 +23,8 @@ public:
 
 class lambertian : public material {
 public:
-    lambertian(const color& a) : albedo(a) {}
+    lambertian(const color& a) : albedo(make_shared<solid_color>(a)) {}
+    lambertian(shared_ptr<texture> a) : albedo(a) {}
 
     bool scatter(const ray& r_in, const hit_payload& rec, color& attenuation, ray& scattered)
         const override {
@@ -39,13 +34,13 @@ public:
         if (scatter_direction.near_zero())
             scatter_direction = rec.normal;
 
-        scattered = ray(rec.p, scatter_direction);
-        attenuation = albedo;
+        scattered = ray(rec.p, scatter_direction, r_in.time());
+        attenuation = albedo->value(rec.u, rec.v, rec.p);
         return true;
     }
 
 private:
-    color albedo;
+    shared_ptr<texture> albedo;
 };
 
 
@@ -56,7 +51,7 @@ public:
     bool scatter(const ray& r_in, const hit_payload& rec, color& attenuation, ray& scattered)
         const override {
         vec3 reflected = reflect(unit_vector(r_in.direction()), rec.normal);
-        scattered = ray(rec.p, reflected + fuzz * random_in_unit_sphere());
+        scattered = ray(rec.p, reflected + fuzz * random_in_unit_sphere(), r_in.time());
         attenuation = albedo;
         return (dot(scattered.direction(), rec.normal) > 0);
     }
@@ -88,7 +83,7 @@ public:
         else
             direction = refract(unit_direction, rec.normal, refraction_ratio);
 
-        scattered = ray(rec.p, direction);
+        scattered = ray(rec.p, direction, r_in.time());
         return true;
     }
 
@@ -101,6 +96,42 @@ private:
         r0 = r0 * r0;
         return r0 + (1 - r0) * pow((1 - cosine), 5);
     }
+};
+
+
+class diffuse_light : public material {
+public:
+    diffuse_light(shared_ptr<texture> a) : emit(a) {}
+    diffuse_light(color c) : emit(make_shared<solid_color>(c)) {}
+
+    bool scatter(const ray& r_in, const hit_payload& rec, color& attenuation, ray& scattered)
+        const override {
+        return false;
+    }
+
+    color emitted(double u, double v, const point3& p) const override {
+        return emit->value(u, v, p);
+    }
+
+private:
+    shared_ptr<texture> emit;
+};
+
+
+class isotropic : public material {
+public:
+    isotropic(color c) : albedo(make_shared<solid_color>(c)) {}
+    isotropic(shared_ptr<texture> a) : albedo(a) {}
+
+    bool scatter(const ray& r_in, const hit_payload& rec, color& attenuation, ray& scattered)
+        const override {
+        scattered = ray(rec.p, random_unit_vector(), r_in.time());
+        attenuation = albedo->value(rec.u, rec.v, rec.p);
+        return true;
+    }
+
+private:
+    shared_ptr<texture> albedo;
 };
 
 

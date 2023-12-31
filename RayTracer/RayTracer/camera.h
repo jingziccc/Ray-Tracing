@@ -7,6 +7,7 @@
 #include "hittable.h"
 #include "material.h"
 
+#include <vector>
 #include <thread>
 #include <mutex>
 
@@ -26,7 +27,7 @@ public:
     vec3   vup = vec3(0, 1, 0);     // Camera-relative "up" direction
 
     double defocus_angle = 0;  // Variation angle of rays through each pixel
-    double focus_dist = 10;    // Distance from camera lookfrom point to plane of perfect focus
+    double focus_dist = 1;    // Distance from camera lookfrom point to plane of perfect focus
 
     std::mutex mtx;
     int progress = 0;

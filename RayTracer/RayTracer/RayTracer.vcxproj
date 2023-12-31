@@ -108,6 +108,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\90457\大学\2023秋季\计算机图形学\RayTracer\RayTracer\external;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,10 +142,12 @@
     <ClInclude Include="color.h" />
     <ClInclude Include="hittable.h" />
     <ClInclude Include="hittable_list.h" />
+    <ClInclude Include="imgUtil.h" />
     <ClInclude Include="interval.h" />
     <ClInclude Include="material.h" />
     <ClInclude Include="ray.h" />
     <ClInclude Include="sphere.h" />
+    <ClInclude Include="texture.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="vec3.h" />
   </ItemGroup>

@@ -1,11 +1,11 @@
 ﻿  main.cpp
-C:\Users\90457\大学\2023秋季\计算机图形学\RayTracer\RayTracer\camera.h(47,44): warning C4018: “<”: 有符号/无符号不匹配
+C:\Users\90457\大学\2023秋季\计算机图形学\RayTracer\RayTracer\camera.h(48,44): warning C4018: “<”: 有符号/无符号不匹配
   (编译源文件“main.cpp”)
   
-C:\Users\90457\大学\2023秋季\计算机图形学\RayTracer\RayTracer\camera.h(70,47): warning C4018: “<”: 有符号/无符号不匹配
+C:\Users\90457\大学\2023秋季\计算机图形学\RayTracer\RayTracer\camera.h(71,47): warning C4018: “<”: 有符号/无符号不匹配
   (编译源文件“main.cpp”)
   
-C:\Users\90457\大学\2023秋季\计算机图形学\RayTracer\RayTracer\camera.h(71,40): warning C4018: “<”: 有符号/无符号不匹配
+C:\Users\90457\大学\2023秋季\计算机图形学\RayTracer\RayTracer\camera.h(72,40): warning C4018: “<”: 有符号/无符号不匹配
   (编译源文件“main.cpp”)
   
   RayTracer.vcxproj -> C:\Users\90457\大学\2023秋季\计算机图形学\RayTracer\x64\Debug\RayTracer.exe
