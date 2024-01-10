@@ -50,7 +50,7 @@ public:
     }
 
     bool near_zero() const {
-        // Return true if the vector is close to zero in all dimensions.
+        // 返回true如果向量的所有分量都趋近于0
         auto s = 1e-8;
         return (fabs(e[0]) < s) && (fabs(e[1]) < s) && (fabs(e[2]) < s);
     }
@@ -64,11 +64,9 @@ public:
     }
 };
 
-// point3 is just an alias for vec3, but useful for geometric clarity in the code.
+
+// point3 只是vec3的别名，但在代码中有助于解释
 using point3 = vec3;
-
-
-// Vector Utility Functions
 
 inline std::ostream& operator<<(std::ostream& out, const vec3& v) {
     return out << v.e[0] << ' ' << v.e[1] << ' ' << v.e[2];
@@ -146,18 +144,22 @@ inline vec3 random_unit_vector() {
     return unit_vector(random_in_unit_sphere());
 }
 
+// 随机生成单位半球上的向量
 inline vec3 random_on_hemisphere(const vec3& normal) {
     vec3 on_unit_sphere = random_unit_vector();
-    if (dot(on_unit_sphere, normal) > 0.0) // In the same hemisphere as the normal
+    // 在与法向量相同的半球上
+    if (dot(on_unit_sphere, normal) > 0.0)
         return on_unit_sphere;
     else
         return -on_unit_sphere;
 }
 
+// 计算反射光线的方向
 inline vec3 reflect(const vec3& v, const vec3& n) {
     return v - 2 * dot(v, n) * n;
 }
 
+// 计算折射光线的方向，入射光线，法向量，折射率
 inline vec3 refract(const vec3& uv, const vec3& n, double etai_over_etat) {
     auto cos_theta = fmin(dot(-uv, n), 1.0);
     vec3 r_out_perp = etai_over_etat * (uv + cos_theta * n);

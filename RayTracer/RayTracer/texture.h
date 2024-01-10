@@ -5,7 +5,7 @@
 
 #include "util.h"
 #include "color.h"
-//#include "imgUtil.h"
+#include "imgUtil.h"
 
 class texture {
 public:
@@ -14,7 +14,7 @@ public:
     virtual color value(double u, double v, const point3& p) const = 0;
 };
 
-
+// 纯色纹理
 class solid_color : public texture {
 public:
     solid_color(color c) : color_value(c) {}
@@ -23,6 +23,7 @@ public:
         : solid_color(color(red, green, blue)) {}
 
     color value(double u, double v, const point3& p) const override {
+        // 返回纯色
         return color_value;
     }
 
@@ -30,7 +31,7 @@ private:
     color color_value;
 };
 
-
+// 棋盘格纹理
 class checker_texture : public texture {
 public:
     checker_texture(double _scale, shared_ptr<texture> _even, shared_ptr<texture> _odd)
@@ -43,44 +44,47 @@ public:
     {}
 
     color value(double u, double v, const point3& p) const override {
+        // 缩放坐标
         auto xInteger = static_cast<int>(std::floor(inv_scale * p.x()));
         auto yInteger = static_cast<int>(std::floor(inv_scale * p.y()));
         auto zInteger = static_cast<int>(std::floor(inv_scale * p.z()));
 
+        // 每当跨过一个整数边界，就会改变一次颜色，形成棋盘格的效果
         bool isEven = (xInteger + yInteger + zInteger) % 2 == 0;
 
         return isEven ? even->value(u, v, p) : odd->value(u, v, p);
     }
 
 private:
-    double inv_scale;
-    shared_ptr<texture> even;
-    shared_ptr<texture> odd;
+    double inv_scale; //缩放比例的倒数
+    shared_ptr<texture> even; //偶数格
+    shared_ptr<texture> odd; //奇数格
 };
 
-//class image_texture : public texture {
-//public:
-//    image_texture(const char* filename) : image(filename) {}
-//
-//    color value(double u, double v, const point3& p) const override {
-//        // If we have no texture data, then return solid cyan as a debugging aid.
-//        if (image.height() <= 0) return color(0, 1, 1);
-//
-//        // Clamp input texture coordinates to [0,1] x [1,0]
-//        u = interval(0, 1).clamp(u);
-//        v = 1.0 - interval(0, 1).clamp(v);  // Flip V to image coordinates
-//
-//        auto i = static_cast<int>(u * image.width());
-//        auto j = static_cast<int>(v * image.height());
-//        auto pixel = image.pixel_data(i, j);
-//
-//        auto color_scale = 1.0 / 255.0;
-//        return color(color_scale * pixel[0], color_scale * pixel[1], color_scale * pixel[2]);
-//    }
-//
-//private:
-//    rtw_image image;
-//};
+// 图像纹理
+class image_texture : public texture {
+public:
+    image_texture(const char* filename) : image(filename) {}
+
+    color value(double u, double v, const point3& p) const override {
+        if (image.height() <= 0) return color(0, 1, 1);
+
+        // 将输入限制在[0,1],转换v到图像坐标
+        u = interval(0, 1).clamp(u);
+        v = 1.0 - interval(0, 1).clamp(v);  // Flip V to image coordinates
+
+        // 转换为像素坐标（通过乘以图像的宽度和高度）
+        auto i = static_cast<int>(u * image.width());
+        auto j = static_cast<int>(v * image.height());
+        auto pixel = image.pixel_data(i, j);
+
+        auto color_scale = 1.0 / 255.0;
+        return color(color_scale * pixel[0], color_scale * pixel[1], color_scale * pixel[2]);
+    }
+
+private:
+    rtw_image image;
+};
 
 
 #endif

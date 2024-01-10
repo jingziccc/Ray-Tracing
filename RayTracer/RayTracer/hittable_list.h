@@ -12,38 +12,40 @@
 
 class hittable_list : public hittable {
 public:
-    std::vector<shared_ptr<hittable>> objects;
+	std::vector<shared_ptr<hittable>> objects;
 
-    hittable_list() {}
-    hittable_list(shared_ptr<hittable> object) { add(object); }
+	hittable_list() {}
+	hittable_list(shared_ptr<hittable> object) { add(object); }
 
-    void clear() { objects.clear(); }
+	void clear() { objects.clear(); }
 
-    void add(shared_ptr<hittable> object) {
-        objects.push_back(object);
-        bbox = aabb(bbox, object->bounding_box());
-    }
+	void add(shared_ptr<hittable> object) {
+		objects.push_back(object);
+		bbox = aabb(bbox, object->bounding_box());
+	}
 
-    bool hit(const ray& r, interval ray_t, hit_payload& rec) const override {
-        hit_payload temp_rec;
-        auto hit_anything = false;
-        auto closest_so_far = ray_t.max;
+	bool hit(const ray& r, interval ray_t, hit_payload& rec) const override {
+		hit_payload temp_rec;//临时变量
+		auto hit_anything = false;
+		auto closest_so_far = ray_t.max;//最近的交点
 
-        for (const auto& object : objects) {
-            if (object->hit(r, interval(ray_t.min, closest_so_far), temp_rec)) {
-                hit_anything = true;
-                closest_so_far = temp_rec.t;
-                rec = temp_rec;
-            }
-        }
+		for (const auto& object : objects) {
+			//遍历所有物体，找到最近的交点
+			if (object->hit(r, interval(ray_t.min, closest_so_far), temp_rec)) {
+				//如果有交点，就更新hit_anything和closest_so_far
+				hit_anything = true;
+				closest_so_far = temp_rec.t;
+				rec = temp_rec;
+			}
+		}
 
-        return hit_anything;
-    }
+		return hit_anything;
+	}
 
-    aabb bounding_box() const override { return bbox; }
+	aabb bounding_box() const override { return bbox; }
 
 private:
-    aabb bbox;
+	aabb bbox;
 };
 
 

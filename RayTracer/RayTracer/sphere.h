@@ -1,15 +1,5 @@
 #ifndef SPHERE_H
 #define SPHERE_H
-//==============================================================================================
-// Originally written in 2016 by Peter Shirley <ptrshrl@gmail.com>
-//
-// To the extent possible under law, the author(s) have dedicated all copyright and related and
-// neighboring rights to this software to the public domain worldwide. This software is
-// distributed without any warranty.
-//
-// You should have received a copy (see file COPYING.txt) of the CC0 Public Domain Dedication
-// along with this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
-//==============================================================================================
 
 #include "util.h"
 
@@ -18,51 +8,43 @@
 
 class sphere : public hittable {
 public:
-    // Stationary Sphere
     sphere(point3 _center, double _radius, shared_ptr<material> _material)
         : center1(_center), radius(_radius), mat(_material), is_moving(false)
     {
         auto rvec = vec3(radius, radius, radius);
-        bbox = aabb(center1 - rvec, center1 + rvec);
-    }
-
-    // Moving Sphere
-    sphere(point3 _center1, point3 _center2, double _radius, shared_ptr<material> _material)
-        : center1(_center1), radius(_radius), mat(_material), is_moving(true)
-    {
-        auto rvec = vec3(radius, radius, radius);
-        aabb box1(_center1 - rvec, _center1 + rvec);
-        aabb box2(_center2 - rvec, _center2 + rvec);
-        bbox = aabb(box1, box2);
-
-        center_vec = _center2 - _center1;
+        bbox = aabb(center1 - rvec, center1 + rvec); // 包围盒加减半径
     }
 
     bool hit(const ray& r, interval ray_t, hit_payload& rec) const override {
-        point3 center = is_moving ? sphere_center(r.time()) : center1;
+        // 计算球心的位置
+        point3 center = center1;
+        // 光线起点到球心的向量(O-C)
         vec3 oc = r.origin() - center;
+        // 光线方向向量的模的平方(D^2)
         auto a = r.direction().length_squared();
+        // 光线起点到球心的向量与光线方向向量的点积((O-C)D)
         auto half_b = dot(oc, r.direction());
+        // 光线起点到球心的向量的模的平方减去球半径的平方(||O-C||^2-r^2)
         auto c = oc.length_squared() - radius * radius;
 
         auto discriminant = half_b * half_b - a * c;
         if (discriminant < 0)
-            return false;
+            return false; // 返回不相交
 
-        // Find the nearest root that lies in the acceptable range.
         auto sqrtd = sqrt(discriminant);
-        auto root = (-half_b - sqrtd) / a;
+        auto root = (-half_b - sqrtd) / a; // 较小的解
+        // 如果较小的解不在待定范围内，取较大的解
         if (!ray_t.surrounds(root)) {
-            root = (-half_b + sqrtd) / a;
+            root = (-half_b + sqrtd) / a; // 较大的解
             if (!ray_t.surrounds(root))
-                return false;
+                return false; // 如果较大的解也不在待定范围内，返回不相交
         }
 
-        rec.t = root;
+        rec.t = root; // 点p到光线起点的距离(参数)
         rec.p = r.at(rec.t);
-        vec3 outward_normal = (rec.p - center) / radius;
+        vec3 outward_normal = (rec.p - center) / radius; // 球心到点p的向量
         rec.set_face_normal(r, outward_normal);
-        get_sphere_uv(outward_normal, rec.u, rec.v);
+        get_sphere_uv(outward_normal, rec.u, rec.v); //通过单位向量映射到单位球上的点
         rec.mat = mat;
 
         return true;
@@ -71,26 +53,21 @@ public:
     aabb bounding_box() const override { return bbox; }
 
 private:
-    point3 center1;
-    double radius;
-    shared_ptr<material> mat;
+    point3 center1; // 球心
+    double radius; // 半径
+    shared_ptr<material> mat; // 材质
     bool is_moving;
-    vec3 center_vec;
-    aabb bbox;
-
-    point3 sphere_center(double time) const {
-        // Linearly interpolate from center1 to center2 according to time, where t=0 yields
-        // center1, and t=1 yields center2.
-        return center1 + time * center_vec;
-    }
+    aabb bbox; // 包围盒
 
     static void get_sphere_uv(const point3& p, double& u, double& v) {
-        // p: a given point on the sphere of radius one, centered at the origin.
-        // u: returned value [0,1] of angle around the Y axis from X=-1.
-        // v: returned value [0,1] of angle from Y=-1 to Y=+1.
-        //     <1 0 0> yields <0.50 0.50>       <-1  0  0> yields <0.00 0.50>
-        //     <0 1 0> yields <0.50 1.00>       < 0 -1  0> yields <0.50 0.00>
-        //     <0 0 1> yields <0.25 0.50>       < 0  0 -1> yields <0.75 0.50>
+        // p: 单位球上的点
+        // u: 从X=-1绕Y轴的角度，在[0,1]之间
+        // v: 从Y=-1到Y=+1的角度，在[0,1]之间
+
+        // 映射关系：
+        // <1 0 0> -> <0.50 0.50>    <-1  0  0> -> <0.00 0.50>
+        // <0 1 0> -> <0.50 1.00>    < 0 -1  0> -> <0.50 0.00>
+        // <0 0 1> -> <0.25 0.50>    < 0  0 -1> -> <0.75 0.50>
 
         auto theta = acos(-p.y());
         auto phi = atan2(-p.z(), p.x()) + pi;

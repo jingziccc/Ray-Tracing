@@ -24,9 +24,9 @@ public:
     }
 
 private:
-    point3 orig;
-    vec3 dir;
-    double tm;
+    point3 orig;    // 起点
+    vec3 dir;       // 方向
+    double tm;      // 时间
 };
 
 #endif

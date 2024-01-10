@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef CAMERA_H
 #define CAMERA_H
 
@@ -13,176 +13,188 @@
 
 #include <iostream>
 
-
-class camera {
+class camera
+{
 public:
-    double aspect_ratio = 1.0;  // Ratio of image width over height
-    int    image_width = 100;  // Rendered image width in pixel count
-    int    samples_per_pixel = 10;   // Count of random samples for each pixel
-    int    max_depth = 10;   // Maximum number of ray bounces into scene
+    // 目标宽长比
+    double aspectRatio = 1.0;
+    // 渲染图片默认宽度
+    int imageWidth = 100;
+    // 渲染采样个数
+    int spp = 10;
+    // 光线最大反射次数
+    int maxDepth = 10;
 
-    double vfov = 90;              // Vertical view angle (field of view)
-    point3 lookfrom = point3(0, 0, -1);  // Point camera is looking from
-    point3 lookat = point3(0, 0, 0);   // Point camera is looking at
-    vec3   vup = vec3(0, 1, 0);     // Camera-relative "up" direction
+    // 垂直视角
+    double vfov = 90;
+    point3 lookfrom = point3(0, 0, -1);
+    point3 lookat = point3(0, 0, 0);
+    vec3 vup = vec3(0, 1, 0);
 
-    double defocus_angle = 0;  // Variation angle of rays through each pixel
-    double focus_dist = 1;    // Distance from camera lookfrom point to plane of perfect focus
+    // 焦距
+    double focuesDistance = 1;
 
-    std::mutex mtx;
-    int progress = 0;
-
-    void render(const hittable& world) {
+    // 渲染函数
+    void render(const hittable& world)
+    {
+        // 初始化
         initialize();
 
-        std::vector<color> framebuffer(image_width * image_height);
+        // 多线程渲染
+        std::vector<color> framebuffer(imageWidth * imageHeight);
+        const int threadsNum = 32;
+        std::thread th[threadsNum];
+        int threadRows = imageHeight / threadsNum;
 
-        //���̣߳�ÿ���̸߳������һ���ָ߶�
-        const int threads_num = 32;
-        std::thread th[threads_num];
-        int thread_rows = image_height / threads_num;
-
-        auto run = [&](uint32_t start_row, uint32_t end_row)
+        auto run = [&](uint32_t startRow, uint32_t endRow)
             {
-                for (uint32_t j = start_row; j < end_row; ++j) {
-                    for (uint32_t i = 0; i < image_width; ++i) {
-                        color pixel_color(0, 0, 0);
-                        for (int sample = 0; sample < samples_per_pixel; ++sample) {
-                            ray r = get_ray(i, j);
-                            pixel_color += ray_color(r, max_depth, world);
-                            framebuffer[j * image_width + i] = pixel_color;
+                for (uint32_t j = startRow; j < endRow; j++)
+                {
+                    for (uint32_t i = 0; i < imageWidth; i++)
+                    {
+                        color pixelColor(0, 0, 0);
+                        for (int sample = 0; sample < spp; sample++)
+                        {
+                            ray r = sampleRay(i, j);
+                            pixelColor += castRay(r, maxDepth, world);
+                            framebuffer[j * imageWidth + i] = pixelColor;
                         }
                     }
                     mtx.lock();
                     progress++;
-                    std::clog << "\rScanlines remaining: " << (image_height - progress) << ' ' << std::flush;
+                    std::clog << "\rScanlines remaining: " << (imageHeight - progress) << ' ' << std::flush;
                     mtx.unlock();
                 }
             };
 
-        for (int i = 0; i < threads_num; i++)
+        for (int i = 0; i < threadsNum; i++)
         {
-            th[i] = std::thread(run, i * thread_rows, (i + 1) * thread_rows);
+            th[i] = std::thread(run, i * threadRows, (i + 1) * threadRows);
         }
 
-        int last_row = thread_rows * threads_num;
-        if (last_row != image_height)
+        // 如果存在未被线程覆盖的行
+        int lastRow = threadRows * threadsNum;
+        if (lastRow != imageHeight)
         {
-            for (uint32_t j = last_row - 1; j < image_height; ++j) {
-                for (uint32_t i = 0; i < image_width; ++i) {
+            for (uint32_t j = lastRow - 1; j < imageHeight; ++j)
+            {
+                for (uint32_t i = 0; i < imageWidth; ++i)
+                {
                     color pixel_color(0, 0, 0);
-                    for (int sample = 0; sample < samples_per_pixel; ++sample) {
-                        ray r = get_ray(i, j);
-                        pixel_color += ray_color(r, max_depth, world);
-                        framebuffer[j * image_width + i] = pixel_color;
+                    for (int sample = 0; sample < spp; ++sample)
+                    {
+                        ray r = sampleRay(i, j);
+                        pixel_color += castRay(r, maxDepth, world);
+                        framebuffer[j * imageWidth + i] = pixel_color;
                     }
                 }
                 mtx.lock();
                 progress++;
-                std::clog << "\rScanlines remaining: " << (image_height - progress) << ' ' << std::flush;
+                std::clog << "\rScanlines remaining: " << (imageHeight - progress) << ' ' << std::flush;
                 mtx.unlock();
             }
         }
-        for (int i = 0; i < threads_num; i++)
+        for (int i = 0; i < threadsNum; i++)
         {
             th[i].join();
         }
 
-        std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
-
-        for (int j = 0; j < image_height; ++j) {
+        // 将framebuffer中颜色写入ppm文件
+        std::cout << "P3\n" << imageWidth << ' ' << imageHeight << "\n255\n";
+        for (int j = 0; j < imageHeight; ++j) {
             // std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
-            for (int i = 0; i < image_width; ++i) {
-                write_color(std::cout, framebuffer[j * image_width + i], samples_per_pixel);
+            for (int i = 0; i < imageWidth; ++i) {
+                write_color(std::cout, framebuffer[j * imageWidth + i], spp);
             }
         }
-
-        std::clog << "\rDone.                 \n";
+        std::clog << "\rDone.                  \n";
     }
 
 private:
-    int    image_height;    // Rendered image height
-    point3 center;          // Camera center
-    point3 pixel00_loc;     // Location of pixel 0, 0
-    vec3   pixel_delta_u;   // Offset to pixel to the right
-    vec3   pixel_delta_v;   // Offset to pixel below
-    vec3   u, v, w;         // Camera frame basis vectors
+        std::mutex mtx;
+        int progress = 0;
 
-    void initialize() {
-        image_height = static_cast<int>(image_width / aspect_ratio);
-        image_height = (image_height < 1) ? 1 : image_height;
+        int imageHeight;
+        point3 camPos;
+        point3 leftTopPixelPos;
+        vec3 deltaU;
+        vec3 deltaV;
 
-        center = lookfrom;
+        vec3 u, v, w;
 
-        // Determine viewport dimensions.
-        auto theta = degrees_to_radians(vfov);
-        // Ĭ�Ͻ���Ϊ1
-        auto h = tan(theta / 2);
-        auto viewport_height = 2 * h * focus_dist;
-        auto viewport_width = viewport_height * (static_cast<double>(image_width) / image_height);
+        // asas
+        void initialize()
+        {
+            imageHeight = (int)(imageWidth / aspectRatio);
+            // 保证图片长度最少为一个像素
+            imageHeight = (imageHeight < 1) ? 1 : imageHeight;
 
-        // Calculate the u,v,w unit basis vectors for the camera coordinate frame.
-        w = unit_vector(lookfrom - lookat);
-        u = unit_vector(cross(vup, w));
-        v = cross(w, u);
+            camPos = lookfrom;
+            auto theta = degrees_to_radians(vfov);
 
-        // Calculate the vectors across the horizontal and down the vertical viewport edges.
-        vec3 viewport_u = viewport_width * u;    // Vector across viewport horizontal edge
-        vec3 viewport_v = viewport_height * -v;  // Vector down viewport vertical edge
+            // 根据vfov计算视口长宽
+            auto h = tan(theta / 2);
+            auto viewportHeight = 2 * h * focuesDistance;
+            auto veiwportWidth = viewportHeight * ((double)imageWidth / imageHeight);
 
-        // Calculate the horizontal and vertical delta vectors to the next pixel.
-        pixel_delta_u = viewport_u / image_width;
-        pixel_delta_v = viewport_v / image_height;
+            w = unit_vector(lookfrom - lookat);
+            u = unit_vector(cross(vup, w));
+            v = cross(w, u);
 
-        // Calculate the location of the upper left pixel.
-        auto viewport_upper_left = center - (focus_dist * w) - viewport_u / 2 - viewport_v / 2;
-        pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
-    }
+            vec3 viewportU = veiwportWidth * u;
+            // 图像像素纵轴向下增长
+            vec3 viewportV = viewportHeight * -v;
 
-    ray get_ray(int i, int j) const {
-        // Get a randomly-sampled camera ray for the pixel at location i,j, originating from
-        // the camera defocus disk.
+            deltaU = viewportU / imageWidth;
+            deltaV = viewportV / imageHeight;
 
-        auto pixel_center = pixel00_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
-        auto pixel_sample = pixel_center + pixel_sample_square();
-
-        auto ray_origin = center;
-        auto ray_direction = pixel_sample - ray_origin;
-
-        return ray(ray_origin, ray_direction);
-    }
-
-    vec3 pixel_sample_square() const {
-        // Returns a random point in the square surrounding a pixel at the origin.
-        auto px = -0.5 + random_double();
-        auto py = -0.5 + random_double();
-        return (px * pixel_delta_u) + (py * pixel_delta_v);
-    }
-
-    vec3 pixel_sample_disk(double radius) const {
-        // Generate a sample from the disk of given radius around a pixel at the origin.
-        auto p = radius * random_in_unit_disk();
-        return (p[0] * pixel_delta_u) + (p[1] * pixel_delta_v);
-    }
-
-    color ray_color(const ray& r, int depth, const hittable& world) const {
-        // If we've exceeded the ray bounce limit, no more light is gathered.
-        if (depth <= 0)
-            return color(0, 0, 0);
-
-        hit_payload payload;
-
-        if (world.hit(r, interval(0.001, infinity), payload)) {
-            ray scattered;
-            color attenuation;
-            if (payload.mat->scatter(r, payload, attenuation, scattered))
-                return attenuation * ray_color(scattered, depth - 1, world);
-            return color(0, 0, 0);
+            auto leftTopPortPos = camPos - w * focuesDistance - viewportU / 2 - viewportV / 2;
+            leftTopPixelPos = leftTopPortPos + (deltaU + deltaV) / 2;
         }
 
-        vec3 unit_direction = unit_vector(r.direction());
-        auto a = 0.5 * (unit_direction.y() + 1.0);
-        return (1.0 - a) * color(1.0, 1.0, 1.0) + a * color(0.5, 0.7, 1.0);
-    }
+        // 抗锯齿，在每个像素点周围[-0.5, 0.5]的正方形区域内进行采样
+        ray sampleRay(int i, int j) const
+        {
+            auto pixelCurrentPos = leftTopPixelPos + (i * deltaU) + (j * deltaV);
+            auto pixelSamplePos = pixelCurrentPos + pixelSampleSquare();
+
+            auto rayOrigin = camPos;
+            auto rayDirection = pixelSamplePos - rayOrigin;
+
+            return ray(rayOrigin, rayDirection);
+        }
+
+        // 方形采样
+        vec3 pixelSampleSquare() const
+        {
+            // 随机返回正方形上的点
+            auto px = -0.5 + random_double();
+            auto py = -0.5 + random_double();
+            return (px * deltaU) + (py * deltaV);
+        }
+
+        // 射出光线
+        vec3 castRay(const ray & r, int depth, const hittable & world) const
+        {
+            if (depth <= 0)
+                return color(1, 1, 1);
+
+            hit_payload payload;
+
+            if (world.hit(r, interval(0.001, infinity), payload)) {
+                ray newRay;
+                color pixelColor;
+
+                if (payload.mat->castray(r, payload, pixelColor, newRay))
+                    return pixelColor * castRay(newRay, depth - 1, world);
+
+                // 停止反射，返回0
+                return color(1, 1, 1);
+            }
+
+            vec3 unitDirection = unit_vector(r.direction());
+            auto a = 0.5 * (unitDirection.y() + 1.0);
+            return (1.0 - a) * color(1.0, 1.0, 1.0) + a * color(0.5, 0.7, 1.0);
+        }
 };
 #endif
